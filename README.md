@@ -224,7 +224,9 @@ YYYY-MM-DD | keywords | 節點檔名
    > ⚠️ **安全說明**：此設定不含身份驗證，知道 URL 的人即可呼叫後端。URL 請勿公開分享。個人單機使用場景下風險可接受；如有顧慮，見 Section 6 Known boundaries。
 5. 複製 Web App URL，日後拖入 MD 時開啟此頁面
 
-**驗證**：用瀏覽器打開 Web App URL，應該看到上傳介面。若出現錯誤頁面，最常見原因是 Script Properties 三個 key 有空白或填錯 Drive ID。
+**驗證**：用瀏覽器打開 Web App URL，應該看到如下的上傳介面。若出現錯誤頁面，最常見原因是 Script Properties 三個 key 有空白或填錯 Drive ID。
+<img width="680" height="587" alt="畫面擷取於 2026-04-13 23 16 26" src="https://github.com/user-attachments/assets/713b63e0-0834-463e-8b48-276d58b81dde" />
+
 
 ### Step 3：安裝 session-wrap-ex SKILL
 
@@ -259,7 +261,8 @@ YYYY-MM-DD | keywords | 節點檔名
 
 **Obsidian 設定**:
 - 建立 vault,vault 路徑指向上一步的本地同步路徑
-- 建議開啟 Graph View,初期規模已可有效導航
+- 建議開啟 Graph View,初期規模已可有效導航，效果如下圖
+<img width="1607" height="1051" alt="圖片" src="https://github.com/user-attachments/assets/390a4d65-a7f6-455c-a512-052474712f6e" />
 
 > **Fallback(先不裝 Obsidian 也能用)**:如果你暫時不想碰 Obsidian,只用 **GAS Web App + Google Drive 網頁版**也能跑通最小流程——節點會寫入 Drive、索引會自動更新,你可以在 Drive 網頁版直接開啟 `_node-index.md` 查找節點、點擊連結開啟對應的 MD 檔案。只是沒有 Obsidian 的雙向連結與關聯圖視覺化。Obsidian 可以之後再補。
 
