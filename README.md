@@ -188,7 +188,7 @@ YYYY-MM-DD | keywords | 節點檔名
 |---|---|
 | 在 Google Drive 建立資料夾，並從 URL 取得資料夾 ID | Step 1 |
 | 在 Google Apps Script 貼上程式碼、設定變數、點選部署 | Step 2 |
-| 在 Claude.ai 設定頁下載並上傳單一 `SKILL.md` 檔案 | Step 3 |
+| 在 Claude.ai 設定頁下載並上傳 `SKILL.md` 檔案 | Step 3 |
 | 安裝同步軟體、設定本地資料夾,在 Obsidian 建立 vault | Step 4 |
 
 不需要會寫程式，但需要能照步驟操作網頁介面。
@@ -228,12 +228,12 @@ YYYY-MM-DD | keywords | 節點檔名
 
 ### Step 3：安裝 session-wrap-ex SKILL
 
-本 repo 的 `skills/session-wrap-ex/SKILL.md`（連結開完 repo 後補上）
+本 repo 的 `[skills/session-wrap-ex/SKILL.md](https://github.com/dawish39/node-vault/blob/main/skills/session-warp-ex/SKILL.md)`
 
 安裝步驟：
 
-1. 從本 repo 的 `skills/session-wrap-ex/SKILL.md` 下載單檔
-2. 在 Claude.ai 網頁版登入，進入 **Settings → Capabilities → Skills**（或 **Customize → Skills**，依方案而異），點「+」按鈕上傳單檔
+1. 從本 repo 的 `[skills/session-wrap-ex/SKILL.md](https://github.com/dawish39/node-vault/blob/main/skills/session-warp-ex/SKILL.md)` 下載skill.md檔案
+2. 在 Claude.ai 網頁版登入，進入 **Settings → Capabilities → Skills**（或 **Customize → Skills**，依方案而異），點「+」按鈕上傳skill.md檔案
 3. 上傳成功後在 Skills 清單裡會看到 `session-wrap-ex`，確認已啟用（toggle on）
 4. 開新對話，輸入觸發詞（`收尾` / `wrap up` 等）測試是否被 Claude 載入並執行
 
