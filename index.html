@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>node-vault</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #f7f6f2;
+    --surface:  #ffffff;
+    --border:   #e2e0d8;
+    --text:     #1a1916;
+    --muted:    #6b6a64;
+    --accent:   #4a3fa0;
+    --accent-l: #ededfb;
+    --success:  #1a7a4a;
+    --success-l:#e6f5ee;
+    --error:    #b83030;
+    --error-l:  #faeaea;
+    --warn:     #7a5a10;
+    --warn-l:   #fdf6e3;
+    --radius:   8px;
+    --mono:     'Courier New', Courier, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:       #18181a;
+      --surface:  #242428;
+      --border:   #38383e;
+      --text:     #e8e6de;
+      --muted:    #8a8880;
+      --accent:   #8b82e0;
+      --accent-l: #2a2848;
+      --success:  #4caf80;
+      --success-l:#1a3028;
+      --error:    #e07070;
+      --error-l:  #301818;
+      --warn:     #c9a84c;
+      --warn-l:   #2a2210;
+    }
+  }
+
+  body {
+    font-family: -apple-system, 'Hiragino Sans', 'Microsoft JhengHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 16px 80px;
+  }
+
+  /* ── RWD 卡片 ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 680px;
+    padding: 32px 36px;
+  }
+
+  @media (max-width: 520px) {
+    body { padding: 0 0 60px; }
+    .card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .logo { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--accent); }
+  .logo-sub { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+
+  /* ── 頁面層級 tab（上傳 / 索引） ── */
+  .page-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    gap: 0;
+  }
+
+  .page-tab {
+    padding: 8px 18px;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .page-tab.active {
+    color: var(--accent);
+    font-weight: 500;
+    border-bottom-color: var(--accent);
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── 上傳模式 tab ── */
+  .mode-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3px;
+    margin-bottom: 20px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 7px 12px;
+    font-size: 13px;
+    text-align: center;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+    border: none;
+    background: none;
+  }
+
+  .mode-tab.active {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* ── 上傳區 ── */
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-l);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+
+  .upload-icon { width: 28px; height: 28px; margin: 0 auto 8px; opacity: 0.35; }
+  .upload-label { font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .upload-label strong { color: var(--accent); font-weight: 500; }
+
+  /* 檔案清單 */
+  .file-list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .file-row .fname {
+    font-family: var(--mono);
+    color: var(--text);
+    flex: 0 0 auto;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-row .row-kw {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-row .row-kw-warn {
+    font-size: 11px;
+    color: var(--error);
+    flex-shrink: 0;
+  }
+
+  .file-row .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0; transition: background 0.2s;
+  }
+
+  .file-row.running .status-dot { background: var(--accent); animation: pulse 0.8s ease-in-out infinite; }
+  .file-row.success .status-dot { background: var(--success); }
+  .file-row.error   .status-dot { background: var(--error); }
+
+  .file-row .status-label { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .file-row.error   .status-label { color: var(--error); }
+  .file-row.success .status-label { color: var(--success); }
+
+  .file-row .remove-btn {
+    padding: 0 6px; height: 20px; line-height: 18px;
+    font-size: 11px; color: var(--muted);
+    background: none; border: 1px solid var(--border);
+    border-radius: 4px; cursor: pointer; flex-shrink: 0;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .file-row .remove-btn:hover { border-color: var(--error); color: var(--error); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+  /* ── 欄位 ── */
+  .field { margin-top: 16px; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  label .hint { font-weight: 400; letter-spacing: 0; text-transform: none; margin-left: 5px; opacity: 0.8; }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 9px 11px;
+    font-size: 14px;
+    font-family: var(--mono);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); opacity: 0.55; }
+
+  .autofill-badge {
+    display: inline-block;
+    font-size: 10px; padding: 1px 5px;
+    background: var(--success-l); color: var(--success);
+    border-radius: 3px; margin-left: 5px;
+    font-weight: 500; letter-spacing: 0; text-transform: none;
+    vertical-align: middle; opacity: 0; transition: opacity 0.3s;
+  }
+
+  .autofill-badge.show { opacity: 1; }
+
+  .batch-note {
+    margin-top: 10px; padding: 9px 11px;
+    background: var(--accent-l); border: 1px solid var(--accent);
+    border-radius: var(--radius); font-size: 12px; color: var(--accent);
+    line-height: 1.6; display: none;
+  }
+
+  .batch-note.show { display: block; }
+
+  /* ── 預覽表格（當次上傳） ── */
+  .preview-wrap { margin-top: 14px; display: none; }
+  .preview-wrap.show { display: block; }
+
+  .preview-label-row {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin-bottom: 6px; opacity: 0.8;
+  }
+
+  /* 共用表格樣式 */
+  .idx-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    table-layout: fixed;
+  }
+
+  .idx-table th {
+    text-align: left;
+    padding: 6px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .idx-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .idx-table tr:last-child td { border-bottom: none; }
+
+  .idx-table .col-date   { width: 96px; font-family: var(--mono); color: var(--muted); font-size: 11px; }
+  .idx-table .col-kw     { width: 44%; color: var(--text); }
+  .idx-table .col-node   { color: var(--accent); font-family: var(--mono); font-size: 11px; }
+  .idx-table .col-action { width: 52px; text-align: right; }
+
+  .idx-table .kw-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    background: var(--accent-l);
+    color: var(--accent);
+    border-radius: 3px;
+    font-size: 10px;
+    margin: 1px 2px 1px 0;
+    white-space: nowrap;
+  }
+
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  /* 進度列 */
+  .progress-wrap { margin-top: 14px; display: none; }
+  .progress-wrap.show { display: block; }
+
+  .progress-bar-bg {
+    height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 2px;
+    width: 0%; transition: width 0.3s ease;
+  }
+
+  .progress-label { font-size: 11px; color: var(--muted); margin-top: 5px; text-align: right; }
+
+  /* ── 按鈕 ── */
+  .actions { display: flex; gap: 8px; margin-top: 24px; }
+
+  .submit-btn {
+    flex: 1; padding: 11px;
+    font-size: 14px; font-weight: 500; color: #fff;
+    background: var(--accent); border: none;
+    border-radius: var(--radius); cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .submit-btn:hover { opacity: 0.88; }
+  .submit-btn:active { transform: scale(0.99); }
+  .submit-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  .clear-all-btn {
+    padding: 11px 14px; font-size: 13px; color: var(--muted);
+    background: none; border: 1px solid var(--border);
+    border-radius: var(--radius); cursor: pointer;
+    transition: border-color 0.15s, color 0.15s; white-space: nowrap;
+  }
+
+  .clear-all-btn:hover { border-color: var(--error); color: var(--error); }
+
+  .spinner {
+    display: inline-block; width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    margin-right: 7px; vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .result {
+    margin-top: 12px; padding: 9px 12px;
+    border-radius: var(--radius); font-size: 13px; line-height: 1.6; display: none;
+  }
+
+  .result.success { display: block; background: var(--success-l); color: var(--success); border: 1px solid var(--success); }
+  .result.error   { display: block; background: var(--error-l);   color: var(--error);   border: 1px solid var(--error); }
+  .result.warn    { display: block; background: var(--warn-l);    color: var(--warn);    border: 1px solid var(--warn); }
+
+  /* ── 索引頁 ── */
+  .index-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .index-count { font-size: 12px; color: var(--muted); flex: 1; }
+
+  .refresh-btn {
+    padding: 6px 12px; font-size: 12px; color: var(--accent);
+    background: var(--accent-l); border: 1px solid var(--accent);
+    border-radius: 6px; cursor: pointer; transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .refresh-btn:hover { opacity: 0.8; }
+  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .index-search {
+    width: 100%;
+    padding: 8px 11px;
+    font-size: 13px;
+    font-family: var(--mono);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+
+  .index-search:focus { border-color: var(--accent); }
+  .index-search::placeholder { color: var(--muted); opacity: 0.55; }
+
+  .index-empty   { text-align: center; padding: 32px 0; font-size: 13px; color: var(--muted); }
+  .index-loading { text-align: center; padding: 32px 0; font-size: 13px; color: var(--muted); }
+
+  /* 索引警告 banner */
+  .index-warn-banner {
+    padding: 9px 12px; margin-bottom: 12px;
+    background: var(--warn-l); border: 1px solid var(--warn);
+    border-radius: var(--radius); font-size: 12px; color: var(--warn);
+    line-height: 1.8;
+  }
+
+  /* 重複 / 異常 badge */
+  .issue-badge {
+    display: inline-block; padding: 1px 5px;
+    border-radius: 3px; font-size: 10px; font-weight: 500;
+    vertical-align: middle; margin-left: 4px;
+  }
+  .issue-badge.dup   { background: var(--warn-l);  color: var(--warn);  border: 1px solid var(--warn); }
+  .issue-badge.empty { background: var(--error-l); color: var(--error); border: 1px solid var(--error); }
+
+  /* 清除索引列按鈕（不刪 Drive 檔案） */
+  .clear-idx-btn {
+    padding: 3px 6px; font-size: 11px; color: var(--muted);
+    background: none; border: 1px solid transparent;
+    border-radius: 4px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  .clear-idx-btn:hover { background: var(--bg); border-color: var(--border); color: var(--text); }
+  .clear-idx-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 刪除按鈕 */
+  .del-btn {
+    padding: 3px 8px; font-size: 11px; color: var(--error);
+    background: none; border: 1px solid transparent;
+    border-radius: 4px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  .del-btn:hover { background: var(--error-l); border-color: var(--error); }
+  .del-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 大螢幕索引表 */
+  .idx-table.full .col-date   { width: 100px; }
+  .idx-table.full .col-kw     { width: 36%; }
+  .idx-table.full .col-action { width: 100px; text-align: right; }
+
+  /* 行動裝置：table → card 佈局 */
+  @media (max-width: 480px) {
+    .idx-table.full thead { display: none; }
+    .idx-table.full,
+    .idx-table.full tbody { display: block; }
+    .idx-table.full tr {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      padding: 10px 12px;
+    }
+    .idx-table.full td {
+      display: block;
+      border: none;
+      padding: 2px 0;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+    }
+    .idx-table.full .col-kw     { display: block !important; }
+    .idx-table.full .col-date   { font-size: 10px; margin-bottom: 4px; }
+    .idx-table.full .col-node   { font-size: 12px; margin-bottom: 6px; }
+    .idx-table.full .col-action { text-align: left; margin-top: 6px; }
+    .index-toolbar { gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <header>
+    <span class="logo">node-vault</span>
+    <span class="logo-sub">知識節點上傳工具</span>
+  </header>
+
+  <!-- 頁面層級 tab -->
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="showPage('upload')">上傳</button>
+    <button class="page-tab" onclick="showPage('index')">索引</button>
+  </div>
+
+  <!-- ══ 上傳頁 ══ -->
+  <div class="page active" id="page-upload">
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('single')">單檔上傳</button>
+      <button class="mode-tab" onclick="setMode('batch')">批次上傳</button>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".md">
+      <svg class="upload-icon" viewBox="0 0 32 32" fill="none">
+        <path d="M10 22H7a5 5 0 0 1 0-10h.5A7 7 0 0 1 22 13.5V14a5 5 0 0 1 1 9.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M16 18v8M13 21l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="upload-label" id="uploadLabel">
+        拖曳 MD 檔至此，或<strong>點擊選取</strong><br>
+        <span style="font-size:11px;opacity:0.7;">自動解析 frontmatter</span>
+      </p>
+    </div>
+
+    <!-- 批次模式說明（取代共用 keywords 欄位） -->
+    <div class="batch-note" id="batchNote">
+      批次模式：keywords / see_also 自動從各檔案的 frontmatter 解析，不需手動填寫。<br>
+      缺少 keywords 的檔案會標記警告，並在送出前封鎖上傳。
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <!-- 單檔模式才顯示的輸入欄 -->
+    <div id="kwField" class="field">
+      <label>keywords <span class="hint">逗號分隔</span>
+        <span class="autofill-badge" id="kwBadge">自動填入</span>
+      </label>
+      <input type="text" id="keywords" placeholder="索引設計, node-vault, Obsidian">
+    </div>
+
+    <div id="saField" class="field">
+      <label>see_also <span class="hint">節點檔名，不含副檔名，選填</span>
+        <span class="autofill-badge" id="saBadge">自動填入</span>
+      </label>
+      <input type="text" id="seeAlso" placeholder="個人尺度問責設計_AI時代一人小隊_20260405">
+    </div>
+
+    <!-- 預覽表格 -->
+    <div class="preview-wrap" id="previewWrap">
+      <div class="preview-label-row">索引列預覽</div>
+      <div class="table-wrap">
+        <table class="idx-table" id="previewTable">
+          <thead>
+            <tr>
+              <th class="col-date">日期</th>
+              <th class="col-kw">Keywords</th>
+              <th class="col-node">節點</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">0 / 0</div>
+    </div>
+
+    <div class="actions">
+      <button class="submit-btn" id="submitBtn" onclick="submit()" disabled>選取 MD 後上傳</button>
+      <button class="clear-all-btn" id="clearBtn" onclick="clearAll()" style="display:none">清除</button>
+    </div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <!-- ══ 索引頁 ══ -->
+  <div class="page" id="page-index">
+    <div class="index-toolbar">
+      <span class="index-count" id="indexCount">—</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadIndex()">重新整理</button>
+    </div>
+
+    <div id="indexWarning"></div>
+
+    <input type="text" class="index-search" id="indexSearch"
+      placeholder="搜尋 keywords 或節點名稱…" oninput="filterIndex()">
+
+    <div id="indexContent">
+      <div class="index-loading">載入中…</div>
+    </div>
+  </div>
+
+</div><!-- .card -->
+
+<script>
+// ══════════════════════════════════════════════
+//  狀態
+// ══════════════════════════════════════════════
+var mode  = "single";
+var files = [];
+var allIndexRows = [];
+
+// ══════════════════════════════════════════════
+//  頁面切換
+// ══════════════════════════════════════════════
+function showPage(p) {
+  document.querySelectorAll(".page-tab").forEach(function(t, i) {
+    t.classList.toggle("active", (i === 0 && p === "upload") || (i === 1 && p === "index"));
+  });
+  document.getElementById("page-upload").classList.toggle("active", p === "upload");
+  document.getElementById("page-index").classList.toggle("active",  p === "index");
+
+  if (p === "index" && allIndexRows.length === 0) loadIndex();
+}
+
+// ══════════════════════════════════════════════
+//  上傳模式切換
+// ══════════════════════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll(".mode-tab").forEach(function(t, i) {
+    t.classList.toggle("active", (i === 0 && m === "single") || (i === 1 && m === "batch"));
+  });
+  document.getElementById("fileInput").multiple = (m === "batch");
+  document.getElementById("batchNote").classList.toggle("show", m === "batch");
+  document.getElementById("kwField").style.display = m === "batch" ? "none" : "";
+  document.getElementById("saField").style.display = m === "batch" ? "none" : "";
+  document.getElementById("uploadLabel").innerHTML = m === "batch"
+    ? "拖曳多個 MD 至此，或<strong>點擊選取</strong><br><span style='font-size:11px;opacity:0.7;'>可一次選取多個檔案</span>"
+    : "拖曳 MD 檔至此，或<strong>點擊選取</strong><br><span style='font-size:11px;opacity:0.7;'>自動解析 frontmatter</span>";
+  clearAll();
+}
+
+// ══════════════════════════════════════════════
+//  拖曳 / 選檔
+// ══════════════════════════════════════════════
+var zone = document.getElementById("uploadZone");
+zone.addEventListener("dragover", function(e) { e.preventDefault(); zone.classList.add("drag-over"); });
+zone.addEventListener("dragleave", function() { zone.classList.remove("drag-over"); });
+zone.addEventListener("drop", function(e) {
+  e.preventDefault(); zone.classList.remove("drag-over");
+  handleFileList(Array.from(e.dataTransfer.files));
+});
+
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  handleFileList(Array.from(e.target.files));
+});
+
+function handleFileList(rawFiles) {
+  var mdFiles = rawFiles.filter(function(f) { return f.name.endsWith(".md"); });
+  if (!mdFiles.length) { showResult("error", "請選取 .md 檔案。"); return; }
+  if (mode === "single") { files = []; addFile(mdFiles[0]); }
+  else mdFiles.forEach(addFile);
+}
+
+function addFile(f) {
+  var entry = { file: f, name: f.name, content: null, keywords: null, seeAlso: null, status: "pending" };
+  files.push(entry);
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    entry.content = e.target.result;
+    if (mode === "single") {
+      parseFrontmatter(entry.content);
+    } else {
+      var parsed = parseFrontmatterData(entry.content);
+      entry.keywords = parsed.keywords;
+      entry.seeAlso  = parsed.seeAlso;
+    }
+    renderFileList();
+    updateButtons();
+    updatePreview();
+  };
+  reader.readAsText(f, "UTF-8");
+}
+
+// ══════════════════════════════════════════════
+//  檔案清單
+// ══════════════════════════════════════════════
+function renderFileList() {
+  var list = document.getElementById("fileList");
+  list.innerHTML = "";
+  files.forEach(function(entry, idx) {
+    var row = document.createElement("div");
+    row.className = "file-row " + entry.status;
+
+    var removeBtn = (entry.status === "pending")
+      ? '<button class="remove-btn" onclick="removeFile(' + idx + ')">✕</button>'
+      : "";
+
+    var midContent = "";
+    if (mode === "batch" && entry.content !== null) {
+      midContent = entry.keywords
+        ? '<span class="row-kw">' + renderKwPills(entry.keywords) + '</span>'
+        : '<span class="row-kw-warn">⚠ 缺少 keywords</span>';
+    }
+
+    row.innerHTML =
+      '<span class="status-dot"></span>' +
+      '<span class="fname">' + escHtml(entry.name) + '</span>' +
+      midContent +
+      removeBtn +
+      '<span class="status-label">' + statusLabel(entry.status) + '</span>';
+    list.appendChild(row);
+  });
+}
+
+function statusLabel(s) {
+  return { pending:"等待中", running:"上傳中", success:"完成", error:"失敗" }[s] || "";
+}
+
+function removeFile(idx) {
+  files.splice(idx, 1);
+  document.getElementById("fileInput").value = "";
+  renderFileList();
+  updateButtons();
+  updatePreview();
+}
+
+// ══════════════════════════════════════════════
+//  Frontmatter 解析
+// ══════════════════════════════════════════════
+function parseFrontmatter(text) {
+  var match = text.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return;
+  var fm = match[1];
+  var kw = extractYamlList(fm, "keywords");
+  var sa = extractYamlList(fm, "see_also");
+  if (kw !== null) { document.getElementById("keywords").value = kw; document.getElementById("kwBadge").classList.add("show"); }
+  if (sa !== null) { document.getElementById("seeAlso").value = sa; if (sa) document.getElementById("saBadge").classList.add("show"); }
+}
+
+function parseFrontmatterData(text) {
+  var result = { keywords: null, seeAlso: "" };
+  var match = text.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return result;
+  var fm = match[1];
+  result.keywords = extractYamlList(fm, "keywords");
+  result.seeAlso  = extractYamlList(fm, "see_also") || "";
+  return result;
+}
+
+function extractYamlList(fm, key) {
+  // 整行解析（同時支援 ["[[節點]]"] 新格式與 [a, b] 舊格式）
+  var lineMatch = fm.match(new RegExp(key + ':\\s*(.+)'));
+  if (lineMatch) {
+    var val = lineMatch[1].trim();
+    if (val === '[]') return "";
+    // 含 [[...]] wiki-link：抽出名稱
+    var wikiLinks = val.match(/\[\[([^\]]+)\]\]/g);
+    if (wikiLinks) {
+      return wikiLinks.map(function(w){ return w.slice(2, -2); }).join(", ");
+    }
+    // 純陣列 [a, b, c]
+    var plainMatch = val.match(/^\[([^\]]*)\]$/);
+    if (plainMatch) {
+      return plainMatch[1].split(",").map(function(s){return s.trim();}).filter(Boolean).join(", ");
+    }
+  }
+  // block list 格式（- item）
+  var m2 = fm.match(new RegExp(key + ':\\s*\\n((?:\\s*-\\s*.+\\n?)+)'));
+  if (m2) return (m2[1].match(/- (.+)/g)||[]).map(function(l){return l.replace(/^-\s*/,"").trim();}).join(", ");
+  return null;
+}
+
+// ══════════════════════════════════════════════
+//  預覽表格
+// ══════════════════════════════════════════════
+document.getElementById("keywords").addEventListener("input", updatePreview);
+
+function updatePreview() {
+  if (!files.length || !files.some(function(f){return f.content;})) return;
+  var today = formatToday();
+  var tbody = document.getElementById("previewBody");
+  tbody.innerHTML = "";
+
+  var toShow = mode === "single" ? [files[0]] : files;
+  toShow.forEach(function(entry) {
+    if (!entry.content) return;
+    var name = entry.name.replace(/\.md$/, "");
+    var kw = mode === "single"
+      ? document.getElementById("keywords").value.trim()
+      : (entry.keywords || "");
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="col-date">' + today + '</td>' +
+      '<td class="col-kw">' + renderKwPills(kw || "(keywords)") + '</td>' +
+      '<td class="col-node">' + escHtml(name) + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("previewWrap").classList.add("show");
+}
+
+function renderKwPills(kwStr) {
+  return kwStr.split(",").map(function(k) {
+    k = k.trim();
+    return k ? '<span class="kw-pill">' + escHtml(k) + '</span>' : "";
+  }).join("");
+}
+
+// ══════════════════════════════════════════════
+//  按鈕狀態 / 清除
+// ══════════════════════════════════════════════
+function updateButtons() {
+  var hasFiles   = files.length > 0;
+  var allLoaded  = files.every(function(f){return f.content !== null;});
+  var batchReady = mode !== "batch" || files.every(function(f){ return f.keywords; });
+
+  document.getElementById("submitBtn").disabled = !hasFiles || !allLoaded || !batchReady;
+  document.getElementById("submitBtn").textContent =
+    mode === "batch" && files.length > 1
+      ? "批次上傳（" + files.length + " 個檔案）"
+      : "上傳到 Google Drive";
+  document.getElementById("clearBtn").style.display = hasFiles ? "block" : "none";
+}
+
+function clearAll() {
+  files = [];
+  document.getElementById("fileInput").value = "";
+  document.getElementById("fileList").innerHTML = "";
+  document.getElementById("keywords").value = "";
+  document.getElementById("seeAlso").value = "";
+  document.getElementById("kwBadge").classList.remove("show");
+  document.getElementById("saBadge").classList.remove("show");
+  document.getElementById("previewWrap").classList.remove("show");
+  document.getElementById("previewBody").innerHTML = "";
+  document.getElementById("progressWrap").classList.remove("show");
+  document.getElementById("clearBtn").style.display = "none";
+  document.getElementById("submitBtn").disabled = true;
+  document.getElementById("submitBtn").textContent = "選取 MD 後上傳";
+  hideResult();
+}
+
+// ══════════════════════════════════════════════
+//  送出
+// ══════════════════════════════════════════════
+function submit() {
+  if (!files.length) { showResult("error", "請先選取 MD 檔案。"); return; }
+
+  var btn = document.getElementById("submitBtn");
+
+  if (mode === "single") {
+    var kw = document.getElementById("keywords").value.trim();
+    if (!kw) { showResult("error", "keywords 為必填。"); return; }
+    btn.disabled = true;
+    hideResult();
+    files.forEach(function(f){f.status="pending";});
+    renderFileList();
+    runSingle(files[0], kw);
+  } else {
+    var missing = files.filter(function(f){ return !f.keywords; });
+    if (missing.length) {
+      showResult("error", missing.length + " 個檔案缺少 keywords，請確認 frontmatter 格式後重新選取。");
+      return;
+    }
+    btn.disabled = true;
+    hideResult();
+    files.forEach(function(f){f.status="pending";});
+    renderFileList();
+    runBatch();
+  }
+}
+
+function runSingle(entry, kw) {
+  var btn = document.getElementById("submitBtn");
+  btn.innerHTML = '<span class="spinner"></span>上傳中…';
+  entry.status = "running"; renderFileList();
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      entry.status = res.ok ? "success" : "error"; renderFileList();
+      btn.disabled = false; btn.textContent = "上傳到 Google Drive";
+      if (res.ok && res.warn === "duplicate") {
+        showResult("warn", "完成：" + entry.name + "（索引已有同名紀錄，舊紀錄保留）");
+      } else {
+        showResult(res.ok ? "success" : "error",
+          res.ok ? "完成：" + entry.name : "錯誤：" + res.message);
+      }
+      if (res.ok) { allIndexRows = []; }
+    })
+    .withFailureHandler(function(err) {
+      entry.status = "error"; renderFileList();
+      btn.disabled = false; btn.textContent = "上傳到 Google Drive";
+      showResult("error", "通訊錯誤：" + err.message);
+    })
+    .upload({
+      filename: entry.name,
+      content:  entry.content,
+      keywords: kw,
+      seeAlso:  document.getElementById("seeAlso").value.trim()
+    });
+}
+
+function runBatch() {
+  var btn = document.getElementById("submitBtn");
+  var total = files.length, done = 0, errCount = 0, dupCount = 0;
+
+  document.getElementById("progressWrap").classList.add("show");
+  updateProgress(0, total);
+
+  function uploadNext(idx) {
+    if (idx >= total) {
+      btn.disabled = false;
+      btn.textContent = "上傳到 Google Drive";
+      var msg = errCount === 0
+        ? "全部完成，共 " + total + " 個節點已上傳。"
+        : (total - errCount) + " 個完成，" + errCount + " 個失敗（見上方清單）。";
+      if (dupCount > 0) msg += "（" + dupCount + " 個已有重複索引紀錄）";
+      showResult(errCount === 0 ? (dupCount > 0 ? "warn" : "success") : "error", msg);
+      if (errCount < total) allIndexRows = [];
+      return;
+    }
+    var entry = files[idx];
+    entry.status = "running"; renderFileList();
+    btn.innerHTML = '<span class="spinner"></span>' + (idx+1) + " / " + total + " 上傳中…";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        done++; entry.status = res.ok ? "success" : "error";
+        if (!res.ok) errCount++;
+        if (res.ok && res.warn === "duplicate") dupCount++;
+        renderFileList(); updateProgress(done, total); uploadNext(idx+1);
+      })
+      .withFailureHandler(function() {
+        done++; entry.status = "error"; errCount++;
+        renderFileList(); updateProgress(done, total); uploadNext(idx+1);
+      })
+      .upload({
+        filename: entry.name,
+        content:  entry.content,
+        keywords: entry.keywords,
+        seeAlso:  entry.seeAlso || ""
+      });
+  }
+
+  uploadNext(0);
+}
+
+function updateProgress(done, total) {
+  document.getElementById("progressFill").style.width = (total > 0 ? Math.round(done/total*100) : 0) + "%";
+  document.getElementById("progressLabel").textContent = done + " / " + total;
+}
+
+// ══════════════════════════════════════════════
+//  索引頁
+// ══════════════════════════════════════════════
+function loadIndex() {
+  var btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "載入中…";
+  document.getElementById("indexContent").innerHTML = '<div class="index-loading">讀取 Drive 中…</div>';
+  document.getElementById("indexCount").textContent = "—";
+  document.getElementById("indexWarning").innerHTML = "";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false; btn.textContent = "重新整理";
+      if (!res.ok) {
+        document.getElementById("indexContent").innerHTML =
+          '<div class="index-empty">讀取失敗：' + escHtml(res.message) + '</div>';
+        return;
+      }
+      allIndexRows = res.rows;
+      checkIndexIssues(allIndexRows);
+      renderIndexTable(allIndexRows);
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false; btn.textContent = "重新整理";
+      document.getElementById("indexContent").innerHTML =
+        '<div class="index-empty">通訊錯誤：' + escHtml(err.message) + '</div>';
+    })
+    .getIndex();
+}
+
+function checkIndexIssues(rows) {
+  var nodeCount = {};
+  var empties   = 0;
+
+  rows.forEach(function(r) {
+    if (!r.node || !r.keywords) { empties++; return; }
+    nodeCount[r.node] = (nodeCount[r.node] || 0) + 1;
+  });
+
+  var dupNodes = Object.keys(nodeCount).filter(function(n){ return nodeCount[n] > 1; });
+
+  var warnEl = document.getElementById("indexWarning");
+  warnEl._dups    = dupNodes;
+  warnEl._empties = empties;
+
+  if (!empties && !dupNodes.length) { warnEl.innerHTML = ""; return; }
+
+  var parts = [];
+  if (dupNodes.length) parts.push("發現 " + dupNodes.length + " 個重複節點紀錄");
+  if (empties)         parts.push(empties + " 筆格式異常（缺少 node 或 keywords）");
+
+  warnEl.innerHTML =
+    '<div class="index-warn-banner">⚠ ' + parts.join("、") + '。請確認後刪除多餘紀錄。</div>';
+}
+
+function filterIndex() {
+  var q = document.getElementById("indexSearch").value.trim().toLowerCase();
+  if (!q) { renderIndexTable(allIndexRows); return; }
+  var filtered = allIndexRows.filter(function(r) {
+    return r.keywords.toLowerCase().includes(q) || r.node.toLowerCase().includes(q);
+  });
+  renderIndexTable(filtered);
+}
+
+function renderIndexTable(rows) {
+  document.getElementById("indexCount").textContent = "共 " + rows.length + " 筆";
+  var container = document.getElementById("indexContent");
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="index-empty">尚無索引資料。</div>';
+    return;
+  }
+
+  var warnEl   = document.getElementById("indexWarning");
+  var dupNodes = warnEl._dups || [];
+
+  var html = '<div class="table-wrap"><table class="idx-table full">' +
+    '<thead><tr>' +
+    '<th class="col-date">日期</th>' +
+    '<th class="col-kw">Keywords</th>' +
+    '<th class="col-node">節點</th>' +
+    '<th class="col-action"></th>' +
+    '</tr></thead><tbody>';
+
+  rows.forEach(function(r) {
+    var badge = "";
+    var isDup   = r.node && r.keywords && dupNodes.indexOf(r.node) !== -1;
+    var isEmpty = !r.node || !r.keywords;
+
+    if (isEmpty)  badge = '<span class="issue-badge empty">格式異常</span>';
+    else if (isDup) badge = '<span class="issue-badge dup">重複</span>';
+
+    var actionCell = isDup
+      ? '<button class="clear-idx-btn" onclick="removeIndexEntryRow(\'' +
+          escAttr(r.node) + '\',\'' + escAttr(r.date) + '\',this)">清除列</button>' +
+        '<button class="del-btn" style="margin-left:4px" onclick="deleteIndexRow(\'' +
+          escAttr(r.node) + '\',this)">刪除</button>'
+      : '<button class="del-btn" onclick="deleteIndexRow(\'' +
+          escAttr(r.node) + '\',this)">刪除</button>';
+
+    html += '<tr>' +
+      '<td class="col-date">' + escHtml(r.date) + '</td>' +
+      '<td class="col-kw">'  + renderKwPills(r.keywords || "") + badge + '</td>' +
+      '<td class="col-node">' + escHtml(r.node) + '</td>' +
+      '<td class="col-action">' + actionCell + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function removeIndexEntryRow(node, date, btn) {
+  if (!confirm("清除「" + node + "」的這筆索引紀錄？\nDrive 上的節點檔案不會被刪除。")) return;
+  btn.disabled = true; btn.textContent = "…";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res.ok) { btn.disabled = false; btn.textContent = "清除列"; alert("清除失敗：" + res.message); return; }
+      var found = false;
+      allIndexRows = allIndexRows.filter(function(r) {
+        if (!found && r.node === node && r.date === date) { found = true; return false; }
+        return true;
+      });
+      checkIndexIssues(allIndexRows);
+      renderIndexTable(allIndexRows);
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false; btn.textContent = "清除列";
+      alert("通訊錯誤：" + err.message);
+    })
+    .removeIndexEntry(node, date);
+}
+
+function deleteIndexRow(node, btn) {
+  if (!confirm("確定要刪除節點「" + node + "」？\n此操作將同時從 Drive 刪除檔案並移除所有索引紀錄。")) return;
+  if (!confirm("再次確認：「" + node + "」將永久刪除，無法復原。\n繼續？")) return;
+  btn.disabled = true;
+  btn.textContent = "…";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res.ok) {
+        btn.disabled = false; btn.textContent = "刪除";
+        alert("刪除失敗：" + res.message);
+        return;
+      }
+      allIndexRows = allIndexRows.filter(function(r){ return r.node !== node; });
+      checkIndexIssues(allIndexRows);
+      renderIndexTable(allIndexRows);
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false; btn.textContent = "刪除";
+      alert("通訊錯誤：" + err.message);
+    })
+    .deleteNode(node + ".md");
+}
+
+// ══════════════════════════════════════════════
+//  工具
+// ══════════════════════════════════════════════
+function formatToday() {
+  var d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function escAttr(s) {
+  return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function showResult(type, msg) {
+  var el = document.getElementById("result");
+  el.className = "result " + type; el.textContent = msg;
+}
+
+function hideResult() {
+  var el = document.getElementById("result");
+  el.className = "result"; el.textContent = "";
+}
+</script>
+</body>
+</html>
