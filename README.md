@@ -228,11 +228,11 @@ YYYY-MM-DD | keywords | 節點檔名
 
 ### Step 3：安裝 session-wrap-ex SKILL
 
-本 repo 的 `[skills/session-wrap-ex/SKILL.md](https://github.com/dawish39/node-vault/blob/main/skills/session-warp-ex/SKILL.md)`
+本 repo 的 `[skills/session-wrap-ex/SKILL.md](https://github.com/dawish39/node-vault/blob/main/skills/session-wrap-ex/SKILL.md)`
 
 安裝步驟：
 
-1. 從本 repo 的 `[skills/session-wrap-ex/SKILL.md](https://github.com/dawish39/node-vault/blob/main/skills/session-warp-ex/SKILL.md)` 下載skill.md檔案
+1. 從本 repo 的 `[skills/session-wrap-ex/SKILL.md](https://github.com/dawish39/node-vault/blob/main/skills/session-wrap-ex/SKILL.md)` 下載skill.md檔案
 2. 在 Claude.ai 網頁版登入，進入 **Settings → Capabilities → Skills**（或 **Customize → Skills**，依方案而異），點「+」按鈕上傳skill.md檔案
 3. 上傳成功後在 Skills 清單裡會看到 `session-wrap-ex`，確認已啟用（toggle on）
 4. 開新對話，輸入觸發詞（`收尾` / `wrap up` 等）測試是否被 Claude 載入並執行
