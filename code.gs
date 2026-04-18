@@ -21,7 +21,8 @@ function doGet() {
   return HtmlService
     .createHtmlOutputFromFile("index")
     .setTitle("node-vault")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 // ── upload：單檔處理，前端 loop 逐一呼叫 ─────────
