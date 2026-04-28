@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>node-vault</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f7f6f2;
+  --surface:  #ffffff;
+  --border:   #e2e0d8;
+  --text:     #1a1916;
+  --muted:    #6b6a64;
+  --accent:   #4a3fa0;
+  --accent-l: #ededfb;
+  --success:  #1a7a4a;
+  --success-l:#e6f5ee;
+  --error:    #b83030;
+  --error-l:  #faeaea;
+  --warn:     #7a5a10;
+  --warn-l:   #fdf6e3;
+  --radius:   8px;
+  --mono:     'Courier New', Courier, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #18181a;
+    --surface:  #242428;
+    --border:   #38383e;
+    --text:     #e8e6de;
+    --muted:    #8a8880;
+    --accent:   #8b82e0;
+    --accent-l: #2a2848;
+    --success:  #4caf80;
+    --success-l:#1a3028;
+    --error:    #e07070;
+    --error-l:  #301818;
+    --warn:     #c9a84c;
+    --warn-l:   #2a2210;
+  }
+}
+
+body {
+  font-family: -apple-system, 'Hiragino Sans', 'Microsoft JhengHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px calc(56px + env(safe-area-inset-bottom) + 16px);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 1080px;
+  padding: 28px 32px;
+}
+
+@media (max-width: 520px) {
+  body { padding: 0 0 calc(56px + env(safe-area-inset-bottom)); }
+  .card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 20px 14px;
+    min-height: 100vh;
+  }
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.logo     { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--accent); }
+.logo-sub { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+
+/* ── Pages ── */
+.page        { display: none; }
+.page.active { display: block; }
+
+/* ── Result Toast ── */
+.result-toast {
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.result-toast.success { background: var(--success-l); color: var(--success); border: 1px solid var(--success); }
+.result-toast.error   { background: var(--error-l);   color: var(--error);   border: 1px solid var(--error); }
+.result-toast.warn    { background: var(--warn-l);    color: var(--warn);    border: 1px solid var(--warn); }
+.toast-close {
+  margin-left: auto;
+  cursor: pointer;
+  opacity: 0.6;
+  font-size: 14px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0 2px;
+  line-height: 1;
+}
+.toast-close:hover { opacity: 1; }
+
+/* ── Upload: Mobile CTA Button ── */
+.cta-btn-area {
+  display: none;
+  width: 100%;
+  padding: 44px 16px;
+  text-align: center;
+  background: var(--accent-l);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+.cta-btn-area svg    { width: 36px; height: 36px; color: var(--accent); margin: 0 auto 8px; display: block; }
+.cta-main            { font-size: 18px; font-weight: 600; color: var(--accent); }
+.cta-sub             { font-size: 14px; color: var(--accent); opacity: 0.7; margin-top: 4px; }
+
+@media (max-width: 520px) {
+  .cta-btn-area  { display: block; }
+  .drag-zone-area { display: none !important; }
+}
+
+/* ── Upload: Desktop Drag Zone ── */
+.drag-zone-area {
+  width: 100%;
+  padding: 32px 20px;
+  text-align: center;
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color 0.15s, background 0.15s;
+  display: block;
+}
+.drag-zone-area:hover,
+.drag-zone-area.drag-over { border-color: var(--accent); background: var(--accent-l); }
+.drag-zone-area svg       { width: 28px; height: 28px; color: var(--muted); margin: 0 auto 6px; display: block; }
+.drag-zone-area .dz-main  { font-size: 16px; color: var(--muted); line-height: 1.5; }
+.drag-zone-area .dz-main strong { color: var(--accent); font-weight: 500; }
+.drag-zone-area .dz-sub   { font-size: 14px; color: var(--muted); opacity: 0.7; margin-top: 4px; }
+
+.hint-text {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+/* ── Review Panel ── */
+.review-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.review-panel-hdr {
+  background: var(--bg);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.add-more-btn {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.add-more-btn:hover { opacity: 0.8; }
+
+/* File row */
+.rv-file {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.rv-file:last-of-type { border-bottom: none; }
+.rv-file.rv-warn-bg   { background: var(--warn-l); }
+
+.rv-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-dot          { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background 0.2s; }
+.dot-ok              { background: var(--success); }
+.dot-warn            { background: var(--warn); }
+.dot-running         { background: var(--accent); animation: pulse 0.8s ease-in-out infinite; }
+.dot-error           { background: var(--error); }
+@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+.rv-fname {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rv-remove {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--muted);
+  background: none; cursor: pointer; flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.rv-remove:hover { border-color: var(--error); color: var(--error); }
+
+/* Desktop: kw pills inline in top row */
+.rv-kw-desktop {
+  display: none;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+  max-width: 260px;
+  overflow: hidden;
+}
+/* Mobile: kw pills below */
+.rv-kw-mobile {
+  padding: 4px 0 0 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+/* Desktop: inline warn text */
+.rv-kw-warn-tag {
+  display: none;
+  font-size: 11px;
+  color: var(--warn);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+/* Mobile: warn text below */
+.rv-kw-warn-mobile {
+  font-size: 11px;
+  color: var(--warn);
+  margin: 4px 0 0 15px;
+  display: block;
+}
+
+.rv-kw-input {
+  width: calc(100% - 15px);
+  margin: 6px 0 0 15px;
+  padding: 7px 10px;
+  font-size: 16px;
+  font-family: var(--mono);
+  background: var(--warn-l);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  color: var(--text);
+  outline: none;
+}
+.rv-kw-input:focus { border-color: var(--accent); }
+.rv-kw-input::placeholder { color: var(--muted); opacity: 0.7; }
+
+@media (min-width: 521px) {
+  .rv-kw-desktop     { display: flex; }
+  .rv-kw-mobile      { display: none; }
+  .rv-kw-warn-tag    { display: block; }
+  .rv-kw-warn-mobile { display: none; }
+}
+
+/* Review panel footer */
+.rv-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cancel-btn {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+.cancel-btn:hover { border-color: var(--error); color: var(--error); }
+.upload-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.upload-btn:hover    { opacity: 0.88; }
+.upload-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.spinner {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+  margin-right: 7px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Progress */
+.progress-wrap        { padding: 8px 14px; border-top: 1px solid var(--border); display: none; }
+.progress-wrap.show   { display: block; }
+.progress-bar-bg      { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-bar-fill    { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.3s ease; }
+.progress-label       { font-size: 11px; color: var(--muted); margin-top: 3px; text-align: right; }
+
+/* Continue upload */
+.continue-area        { display: none; margin-top: 12px; }
+.continue-area.show   { display: block; }
+.continue-cta {
+  display: block;
+  width: 100%;
+  padding: 28px 16px;
+  text-align: center;
+  background: var(--accent-l);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  transition: opacity 0.15s;
+}
+.continue-cta:hover { opacity: 0.85; }
+@media (min-width: 521px) {
+  .continue-cta {
+    padding: 20px;
+    border-style: dashed;
+    border-width: 1.5px;
+    font-weight: 500;
+  }
+}
+
+/* ── Keyword pills (shared) ── */
+.kw-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--accent-l);
+  color: var(--accent);
+  border-radius: 3px;
+  font-size: 10px;
+  margin: 1px 2px 1px 0;
+  white-space: nowrap;
+}
+
+/* ── Dashboard ── */
+.refresh-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.refresh-count { font-size: 14px; color: var(--muted); }
+.refresh-btn {
+  padding: 5px 11px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-l);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.refresh-btn:hover    { opacity: 0.8; }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sec-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 16px 0 8px;
+}
+.sec-title:first-child { margin-top: 0; }
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+@media (min-width: 521px) {
+  .stats-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.stat-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; min-height: 68px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.stat-num   { font-size: 28px; font-weight: 700; color: var(--text); }
+.stat-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: auto; }
+.stat-sub   { font-size: 13px; color: var(--accent); font-family: var(--mono); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Dash 2-col */
+.dash-cols { display: block; }
+.dash-col  { min-width: 0; }
+@media (min-width: 521px) {
+  .dash-cols { display: flex; gap: 16px; }
+  .dash-col  { flex: 1; }
+}
+
+/* Keyword rank */
+.kw-rank-card     { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 14px; }
+.kw-rank-row      { display: flex; align-items: center; gap: 7px; padding: 5px 0; min-height: 38px; }
+.kw-rank-num      { font-size: 13px; color: var(--muted); width: 18px; text-align: right; flex-shrink: 0; }
+.kw-rank-bar-wrap { flex: 1; height: 24px; background: var(--accent-l); border-radius: 4px; overflow: hidden; }
+.kw-rank-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; min-width: 24px; display: flex; align-items: center; padding-left: 6px; }
+.kw-rank-name     { font-size: 12px; color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden; }
+.kw-rank-count    { font-size: 13px; color: var(--muted); width: 24px; text-align: right; flex-shrink: 0; }
+
+/* Recent card */
+.recent-card      { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 6px; }
+.recent-node      { font-size: 15px; color: var(--text); font-weight: 600; font-family: var(--mono); margin: 2px 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Expand button */
+.expand-btn {
+  width: 100%;
+  padding: 11px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--accent-l);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  margin-top: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.expand-btn:hover { opacity: 0.85; }
+
+/* ── Full List Panel ── */
+#fullListPanel        { display: none; margin-top: 12px; }
+#fullListPanel.show   { display: block; }
+
+.full-list-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+/* Sub-tabs */
+.sub-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.sub-tab {
+  flex: 1;
+  padding: 9px 4px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sub-tab.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); }
+.tab-badge { display: inline-block; padding: 0 4px; background: var(--accent-l); color: var(--accent); border-radius: 8px; font-size: 9px; margin-left: 2px; }
+.sub-tab.active .tab-badge { background: var(--accent); color: #fff; }
+
+.tab-content        { display: none; }
+.tab-content.active { display: block; }
+
+/* Date header */
+.date-header {
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  font-family: var(--mono);
+  padding: 8px 0 4px; margin-top: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.date-header:first-child { margin-top: 0; }
+
+/* Full card */
+.full-card         { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-top: 6px; display: flex; align-items: flex-start; gap: 8px; }
+.full-card-main    { flex: 1; min-width: 0; overflow: hidden; }
+.full-card-node    { font-size: 14px; color: var(--text); font-weight: 600; font-family: var(--mono); margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.full-card-actions { flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+@media (max-width: 520px) {
+  .full-card { flex-direction: column; gap: 6px; }
+  .full-card-main { width: 100%; }
+  .full-card-actions { flex-direction: row; align-self: flex-end; }
+}
+@media (min-width: 521px) { .full-card-actions { flex-direction: row; } }
+
+.dup-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 600; background: var(--warn-l); color: var(--warn); border: 1px solid var(--warn); margin-left: 4px; vertical-align: middle; }
+
+/* Small action buttons */
+.btn-sm {
+  padding: 3px 9px; font-size: 10px;
+  border-radius: 4px; border: 1px solid var(--border);
+  color: var(--muted); background: none; cursor: pointer;
+  white-space: nowrap; transition: background 0.15s, border-color 0.15s;
+}
+.btn-sm:hover    { background: var(--bg); border-color: var(--text); color: var(--text); }
+.btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sm.danger   { color: var(--error); border-color: var(--error); }
+.btn-sm.danger:hover { background: var(--error-l); }
+.btn-sm.warn-btn { color: var(--warn); border-color: var(--warn); }
+.btn-sm.warn-btn:hover { background: var(--warn-l); }
+
+/* Warn banner */
+.warn-banner { border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; font-size: 12px; line-height: 1.6; background: var(--warn-l); border: 1px solid var(--warn); color: var(--warn); }
+
+/* Dup group header */
+.dup-group-hdr { font-size: 12px; font-weight: 600; color: var(--text); margin: 14px 0 6px; font-family: var(--mono); }
+
+/* Empty / loading */
+.tab-empty   { text-align: center; padding: 32px 0; font-size: 13px; color: var(--muted); }
+.loading-msg { text-align: center; padding: 32px 0; font-size: 13px; color: var(--muted); }
+
+/* Pending placeholder */
+.pending-ph       { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 32px 16px; text-align: center; }
+.pending-ph-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.pending-ph-desc  { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+/* ── Bottom Navigation ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 56px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  color: var(--muted); font-size: 11px;
+  background: none; border: none; cursor: pointer;
+  min-height: 48px; transition: color 0.15s;
+}
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg    { width: 20px; height: 20px; }
+
+/* ── Desktop font scale-up ── */
+@media (min-width: 521px) {
+  .stat-num        { font-size: 36px; }
+  .stat-label      { font-size: 15px; }
+  .stat-sub        { font-size: 15px; }
+  .sec-title       { font-size: 16px; }
+  .kw-rank-row     { min-height: 42px; }
+  .kw-rank-num,
+  .kw-rank-count   { font-size: 16px; }
+  .kw-rank-name    { font-size: 14px; }
+  .kw-rank-bar-wrap { height: 28px; }
+  .date-header     { font-size: 15px; }
+  .recent-node     { font-size: 16px; }
+  .full-card-node  { font-size: 17px; }
+  .refresh-count   { font-size: 16px; }
+}
+</style>
+</head>
+<body>
+
+<input type="file" id="fileInput" accept=".md" multiple style="display:none">
+
+<div class="card">
+  <header>
+    <span class="logo">node-vault</span>
+    <span class="logo-sub">知識節點上傳工具</span>
+  </header>
+
+  <!-- ══ 上傳頁 ══ -->
+  <div class="page" id="page-upload">
+
+    <div id="resultToast" class="result-toast" style="display:none"></div>
+
+    <!-- 選檔區 -->
+    <div id="selectArea">
+      <!-- 手機：CTA 按鈕 -->
+      <div class="cta-btn-area" id="ctaBtnArea" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 16V8m-3 3l3-3 3 3"/><rect x="4" y="4" width="16" height="16" rx="3"/>
+        </svg>
+        <div class="cta-main">選取 .md 檔案</div>
+        <div class="cta-sub">可一次選取多個，自動解析 frontmatter</div>
+      </div>
+      <!-- 桌面：拖曳區 -->
+      <div class="drag-zone-area" id="dragZone" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M10 22H7a5 5 0 0 1 0-10h.5A7 7 0 0 1 22 13.5V14a5 5 0 0 1 1 9.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M16 18v8M13 21l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="dz-main">拖曳 MD 檔至此，或<strong>點擊選取</strong></p>
+        <p class="dz-sub">可一次選取多個檔案，自動解析 frontmatter</p>
+      </div>
+      <div class="hint-text">選取後進入確認畫面</div>
+    </div>
+
+    <!-- 確認面板 -->
+    <div id="reviewPanel" style="display:none">
+      <div class="review-panel" id="reviewPanelBox">
+        <div class="review-panel-hdr">
+          <span id="reviewTitle">確認上傳 — 0 個檔案</span>
+          <button class="add-more-btn" onclick="addMoreFiles()">+ 加入更多</button>
+        </div>
+        <div id="reviewFileList"></div>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+          <div class="progress-label" id="progressLabel">0 / 0</div>
+        </div>
+        <div class="rv-footer">
+          <button class="cancel-btn" onclick="clearAll()">取消</button>
+          <button class="upload-btn" id="uploadBtn" onclick="submit()" disabled>上傳 0 個檔案</button>
+        </div>
+      </div>
+      <div class="continue-area" id="continueArea">
+        <div class="continue-cta" onclick="clearAll()">繼續上傳更多檔案</div>
+      </div>
+    </div>
+
+  </div><!-- #page-upload -->
+
+  <!-- ══ 儀表板頁 ══ -->
+  <div class="page" id="page-dashboard">
+
+    <div class="refresh-bar">
+      <span class="refresh-count" id="dashCount">—</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadIndex()">重新整理</button>
+    </div>
+
+    <div id="dashContent">
+      <div class="loading-msg">切換頁面後自動載入…</div>
+    </div>
+
+    <button class="expand-btn" id="expandBtn" style="display:none" onclick="toggleFullList()">展開全部（— 筆）</button>
+
+    <div id="fullListPanel">
+      <div class="full-list-title">全量節點管理</div>
+      <div class="sub-tabs">
+        <button class="sub-tab active" id="stab-tab1" onclick="switchFullListTab('tab1')">索引總覽 <span class="tab-badge" id="badge-tab1">—</span></button>
+        <button class="sub-tab"        id="stab-tab2" onclick="switchFullListTab('tab2')">重複清理 <span class="tab-badge" id="badge-tab2">—</span></button>
+        <button class="sub-tab"        id="stab-tab3" onclick="switchFullListTab('tab3')">Pending Links <span class="tab-badge" id="badge-tab3">—</span></button>
+      </div>
+      <div class="tab-content active" id="tab1-content"></div>
+      <div class="tab-content"        id="tab2-content"></div>
+      <div class="tab-content"        id="tab3-content"></div>
+    </div>
+
+  </div><!-- #page-dashboard -->
+
+</div><!-- .card -->
+
+<!-- 底部導航 -->
+<nav class="bottom-nav">
+  <button class="nav-btn" id="nav-upload" onclick="showPage('upload')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 16V8m-3 3l3-3 3 3"/><rect x="4" y="4" width="16" height="16" rx="3"/>
+    </svg>
+    <span>上傳</span>
+  </button>
+  <button class="nav-btn" id="nav-dashboard" onclick="showPage('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+    </svg>
+    <span>儀表板</span>
+  </button>
+</nav>
+
+<script>
+// ══════════════════════════════════════════════
+//  全域狀態
+// ══════════════════════════════════════════════
+var files            = [];
+var allIndexRows     = [];
+var fullListExpanded = false;
+var activeFullListTab = "tab1";
+
+// ══════════════════════════════════════════════
+//  頁面切換
+// ══════════════════════════════════════════════
+function showPage(p) {
+  document.getElementById("page-upload").classList.toggle("active", p === "upload");
+  document.getElementById("page-dashboard").classList.toggle("active", p === "dashboard");
+  document.getElementById("nav-upload").classList.toggle("active", p === "upload");
+  document.getElementById("nav-dashboard").classList.toggle("active", p === "dashboard");
+  if (p === "dashboard" && allIndexRows.length === 0) loadIndex();
+}
+
+// ══════════════════════════════════════════════
+//  拖曳 / 選檔
+// ══════════════════════════════════════════════
+(function() {
+  var zone = document.getElementById("dragZone");
+  zone.addEventListener("dragover", function(e) { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", function() { zone.classList.remove("drag-over"); });
+  zone.addEventListener("drop", function(e) {
+    e.preventDefault(); zone.classList.remove("drag-over");
+    handleFileList(Array.from(e.dataTransfer.files));
+  });
+})();
+
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  handleFileList(Array.from(e.target.files));
+  e.target.value = "";
+});
+
+function handleFileList(rawFiles) {
+  var mdFiles = rawFiles.filter(function(f) { return f.name.endsWith(".md"); });
+  if (!mdFiles.length) { showResultToast("error", "請選取 .md 檔案。"); return; }
+  mdFiles.forEach(addFile);
+}
+
+function addFile(f) {
+  var entry = { file: f, name: f.name, content: null, keywords: null, seeAlso: "", status: "pending" };
+  files.push(entry);
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    entry.content = e.target.result;
+    var parsed    = parseFrontmatterData(entry.content);
+    entry.keywords = parsed.keywords || null;
+    entry.seeAlso  = parsed.seeAlso  || "";
+    showReviewPanel();
+    renderReviewFiles();
+    updateButtons();
+  };
+  reader.readAsText(f, "UTF-8");
+}
+
+// ══════════════════════════════════════════════
+//  確認面板
+// ══════════════════════════════════════════════
+function showReviewPanel() {
+  document.getElementById("selectArea").style.display  = "none";
+  document.getElementById("reviewPanel").style.display = "block";
+}
+
+function hideReviewPanel() {
+  document.getElementById("reviewPanel").style.display = "none";
+  document.getElementById("selectArea").style.display  = "";
+}
+
+function renderReviewFiles() {
+  var container = document.getElementById("reviewFileList");
+  document.getElementById("reviewTitle").textContent = "確認上傳 — " + files.length + " 個檔案";
+
+  if (!files.length) { container.innerHTML = ""; return; }
+
+  var html = "";
+  files.forEach(function(entry, idx) {
+    var isDone    = entry.status === "success" || entry.status === "error";
+    var isRunning = entry.status === "running";
+    var hasMissing = entry.content !== null && !entry.keywords && !isDone && !isRunning;
+    var hasKw      = entry.content !== null && entry.keywords  && !isDone && !isRunning;
+
+    var rowCls = "rv-file" + (hasMissing ? " rv-warn-bg" : "");
+
+    var dotCls = "status-dot ";
+    if      (isRunning)           dotCls += "dot-running";
+    else if (entry.status === "success") dotCls += "dot-ok";
+    else if (entry.status === "error")   dotCls += "dot-error";
+    else if (hasMissing)          dotCls += "dot-warn";
+    else                          dotCls += "dot-ok";
+
+    var removeBtn = (!isDone && !isRunning)
+      ? '<button class="rv-remove" onclick="removeFile(' + idx + ')">✕</button>' : "";
+
+    var statusSpan = "";
+    if (entry.status === "success") statusSpan = '<span style="font-size:11px;color:var(--success);margin-left:auto;flex-shrink:0">完成</span>';
+    if (entry.status === "error")   statusSpan = '<span style="font-size:11px;color:var(--error);margin-left:auto;flex-shrink:0">失敗</span>';
+
+    html += '<div class="' + rowCls + '">';
+    html += '<div class="rv-top">';
+    html += '<span class="' + dotCls + '"></span>';
+    html += '<span class="rv-fname">' + escHtml(entry.name) + '</span>';
+
+    if (hasKw) {
+      // Desktop: pills inline; mobile: hidden here, shown below
+      html += '<div class="rv-kw-desktop">' + renderKwPills(entry.keywords) + '</div>';
+    } else if (hasMissing) {
+      html += '<span class="rv-kw-warn-tag">⚠ 缺少 keywords</span>';
+    }
+
+    if (statusSpan) html += statusSpan;
+    if (removeBtn)  html += removeBtn;
+    html += '</div>'; // .rv-top
+
+    if (hasKw) {
+      // Mobile: pills below
+      html += '<div class="rv-kw-mobile">' + renderKwPills(entry.keywords) + '</div>';
+    } else if (hasMissing) {
+      html += '<div class="rv-kw-warn-mobile">⚠ frontmatter 缺少 keywords</div>';
+      html += '<input class="rv-kw-input" placeholder="手動輸入 keywords，逗號分隔" ' +
+        'value="' + escAttr(entry.keywords || "") + '" ' +
+        'oninput="updateEntryKeywords(' + idx + ', this.value)">';
+    }
+
+    html += '</div>'; // .rv-file
+  });
+
+  container.innerHTML = html;
+}
+
+function addMoreFiles() {
+  document.getElementById("fileInput").click();
+}
+
+function updateEntryKeywords(idx, value) {
+  files[idx].keywords = value.trim() || null;
+  updateButtons();
+}
+
+// ══════════════════════════════════════════════
+//  按鈕狀態 / 清除
+// ══════════════════════════════════════════════
+function updateButtons() {
+  var n = files.filter(function(f) {
+    return f.status === "pending" && f.content !== null && f.keywords;
+  }).length;
+  var btn = document.getElementById("uploadBtn");
+  btn.disabled = (n === 0);
+  btn.textContent = "上傳 " + n + " 個檔案";
+}
+
+function clearAll() {
+  files = [];
+  document.getElementById("fileInput").value = "";
+  document.getElementById("progressWrap").classList.remove("show");
+  document.getElementById("continueArea").classList.remove("show");
+  document.getElementById("reviewPanelBox").style.opacity = "";
+  hideResultToast();
+  hideReviewPanel();
+  var btn = document.getElementById("uploadBtn");
+  btn.disabled = true;
+  btn.textContent = "上傳 0 個檔案";
+}
+
+// ══════════════════════════════════════════════
+//  Result Toast
+// ══════════════════════════════════════════════
+function showResultToast(type, msg) {
+  var el = document.getElementById("resultToast");
+  el.className = "result-toast " + type;
+  el.innerHTML = '<span>' + escHtml(msg) + '</span>' +
+    '<button class="toast-close" onclick="hideResultToast()">✕</button>';
+  el.style.display = "flex";
+}
+
+function hideResultToast() {
+  var el = document.getElementById("resultToast");
+  el.style.display = "none";
+  el.className = "result-toast";
+}
+
+function showContinueUpload() {
+  document.getElementById("continueArea").classList.add("show");
+}
+
+// ══════════════════════════════════════════════
+//  檔案清單工具（🔵 保留）
+// ══════════════════════════════════════════════
+function statusLabel(s) {
+  return { pending:"等待中", running:"上傳中", success:"完成", error:"失敗" }[s] || "";
+}
+
+function removeFile(idx) {
+  files.splice(idx, 1);
+  if (files.length === 0) { clearAll(); return; }
+  renderReviewFiles();
+  updateButtons();
+}
+
+// ══════════════════════════════════════════════
+//  送出 / 上傳
+// ══════════════════════════════════════════════
+function submit() {
+  var toUpload = files.filter(function(f) {
+    return f.status === "pending" && f.content !== null && f.keywords;
+  });
+  if (!toUpload.length) return;
+  document.getElementById("uploadBtn").disabled = true;
+  hideResultToast();
+  runBatch(toUpload);
+}
+
+function runBatch(toUpload) {
+  var btn      = document.getElementById("uploadBtn");
+  var total    = toUpload.length;
+  var done     = 0, errCount = 0, dupCount = 0;
+
+  document.getElementById("progressWrap").classList.add("show");
+  updateProgress(0, total);
+
+  function uploadNext(idx) {
+    if (idx >= total) {
+      btn.disabled    = false;
+      btn.textContent = "上傳 0 個檔案";
+      var msg = errCount === 0
+        ? "全部完成，共 " + total + " 個節點已上傳。"
+        : (total - errCount) + " 個完成，" + errCount + " 個失敗（見下方清單）。";
+      if (dupCount > 0) msg += "（" + dupCount + " 個已有重複索引紀錄）";
+      var type = errCount === 0 ? (dupCount > 0 ? "warn" : "success") : "error";
+      showResultToast(type, msg);
+      document.getElementById("reviewPanelBox").style.opacity = "0.65";
+      showContinueUpload();
+      if (errCount < total) allIndexRows = [];
+      return;
+    }
+
+    var entry = toUpload[idx];
+    entry.status = "running";
+    renderReviewFiles();
+    btn.innerHTML = '<span class="spinner"></span>' + (idx + 1) + " / " + total + " 上傳中…";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        done++;
+        entry.status = res.ok ? "success" : "error";
+        if (!res.ok) errCount++;
+        if (res.ok && res.warn === "duplicate") dupCount++;
+        renderReviewFiles();
+        updateProgress(done, total);
+        uploadNext(idx + 1);
+      })
+      .withFailureHandler(function() {
+        done++;
+        entry.status = "error";
+        errCount++;
+        renderReviewFiles();
+        updateProgress(done, total);
+        uploadNext(idx + 1);
+      })
+      .upload({
+        filename: entry.name,
+        content:  entry.content,
+        keywords: entry.keywords,
+        seeAlso:  ""
+      });
+  }
+
+  uploadNext(0);
+}
+
+function updateProgress(done, total) {
+  document.getElementById("progressFill").style.width =
+    (total > 0 ? Math.round(done / total * 100) : 0) + "%";
+  document.getElementById("progressLabel").textContent = done + " / " + total;
+}
+
+// ══════════════════════════════════════════════
+//  儀表板
+// ══════════════════════════════════════════════
+function loadIndex() {
+  var btn = document.getElementById("refreshBtn");
+  btn.disabled    = true;
+  btn.textContent = "載入中…";
+  document.getElementById("dashCount").textContent  = "—";
+  document.getElementById("dashContent").innerHTML  = '<div class="loading-msg">讀取 Drive 中…</div>';
+  document.getElementById("expandBtn").style.display = "none";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled    = false;
+      btn.textContent = "重新整理";
+      if (!res.ok) {
+        document.getElementById("dashContent").innerHTML =
+          '<div class="loading-msg">讀取失敗：' + escHtml(res.message) + '</div>';
+        return;
+      }
+      allIndexRows = res.rows;
+      document.getElementById("dashCount").textContent = "共 " + allIndexRows.length + " 筆";
+      renderDashboard(allIndexRows);
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled    = false;
+      btn.textContent = "重新整理";
+      document.getElementById("dashContent").innerHTML =
+        '<div class="loading-msg">通訊錯誤：' + escHtml(err.message) + '</div>';
+    })
+    .getIndex();
+}
+
+function calcStats(rows) {
+  var d  = new Date();
+  var ym = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  var kwSet = new Set();
+  rows.forEach(function(r) {
+    if (r.keywords) r.keywords.split(",").forEach(function(k) {
+      var t = k.trim(); if (t) kwSet.add(t);
+    });
+  });
+  return {
+    total:     rows.length,
+    thisMonth: rows.filter(function(r) { return r.date && r.date.startsWith(ym); }).length,
+    uniqueKw:  kwSet.size,
+    latest:    rows.length > 0 ? rows[0] : null
+  };
+}
+
+function calcTopKeywords(rows, limit) {
+  var counts = {};
+  rows.forEach(function(r) {
+    if (r.keywords) r.keywords.split(",").forEach(function(k) {
+      var t = k.trim(); if (t) counts[t] = (counts[t] || 0) + 1;
+    });
+  });
+  var arr = Object.keys(counts).map(function(k) { return { keyword: k, count: counts[k] }; });
+  arr.sort(function(a, b) { return b.count - a.count; });
+  return arr.slice(0, limit);
+}
+
+function renderDashboard(rows) {
+  var stats  = calcStats(rows);
+  var topKw  = calcTopKeywords(rows, 10);
+  var recent = rows.slice(0, 15);
+
+  var html = "";
+
+  // 摘要卡片
+  html += '<div class="sec-title">摘要</div>';
+  html += '<div class="stats-grid">';
+  html += '<div class="stat-card"><div class="stat-num">' + stats.total + '</div><div class="stat-label">總節點數</div></div>';
+  html += '<div class="stat-card"><div class="stat-num">' + stats.thisMonth + '</div><div class="stat-label">本月新增</div></div>';
+  html += '<div class="stat-card"><div class="stat-num">' + stats.uniqueKw + '</div><div class="stat-label">活躍 Keywords</div></div>';
+  if (stats.latest) {
+    html += '<div class="stat-card">' +
+      '<div class="stat-sub" style="color:var(--muted)">' + escHtml(stats.latest.date) + '</div>' +
+      '<div class="stat-sub" style="color:var(--text)">' + escHtml(stats.latest.node) + '</div>' +
+      '<div class="stat-label">最近歸檔</div></div>';
+  } else {
+    html += '<div class="stat-card"><div class="stat-label">最近歸檔</div></div>';
+  }
+  html += '</div>'; // .stats-grid
+
+  // 2欄：Top10 + 最近歸檔
+  html += '<div class="dash-cols">';
+
+  // Top 10 Keywords
+  html += '<div class="dash-col">';
+  html += '<div class="sec-title">Top 10 Keywords</div>';
+  html += '<div class="kw-rank-card">';
+  if (!topKw.length) {
+    html += '<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted)">尚無資料</div>';
+  } else {
+    var maxCount = topKw[0].count;
+    topKw.forEach(function(kw, i) {
+      var pct = Math.round(kw.count / maxCount * 100);
+      html += '<div class="kw-rank-row">' +
+        '<span class="kw-rank-num">' + (i + 1) + '</span>' +
+        '<div class="kw-rank-bar-wrap">' +
+          '<div class="kw-rank-bar-fill" style="width:' + pct + '%">' +
+            '<span class="kw-rank-name">' + escHtml(kw.keyword) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<span class="kw-rank-count">' + kw.count + '</span>' +
+        '</div>';
+    });
+  }
+  html += '</div>'; // .kw-rank-card
+  html += '</div>'; // .dash-col
+
+  // 最近 15 筆
+  html += '<div class="dash-col">';
+  html += '<div class="sec-title">最近歸檔</div>';
+  if (!recent.length) {
+    html += '<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted)">尚無資料</div>';
+  } else {
+    var lastDate = "";
+    recent.forEach(function(r) {
+      if (r.date !== lastDate) {
+        html += '<div class="date-header">' + escHtml(r.date) + '</div>';
+        lastDate = r.date;
+      }
+      html += '<div class="recent-card">' +
+        '<div class="recent-node">' + escHtml(r.node) + '</div>' +
+        '<div>' + renderKwPills(r.keywords || "") + '</div>' +
+        '</div>';
+    });
+    html += '<div class="hint-text">最近 15 筆，唯讀 / 完整管理請展開下方清單</div>';
+  }
+  html += '</div>'; // .dash-col
+
+  html += '</div>'; // .dash-cols
+
+  document.getElementById("dashContent").innerHTML = html;
+
+  // 展開按鈕
+  var expBtn = document.getElementById("expandBtn");
+  expBtn.style.display = "block";
+  expBtn.textContent   = "展開全部（" + rows.length + " 筆）";
+
+  // Tab badges
+  document.getElementById("badge-tab1").textContent = rows.length;
+  var dupNodes = _countDupNodes(rows);
+  document.getElementById("badge-tab2").textContent = Object.keys(dupNodes).length || "0";
+  document.getElementById("badge-tab3").textContent = "—";
+
+  // 若已展開則重新渲染
+  if (fullListExpanded) {
+    renderFullListTab1(allIndexRows);
+    renderFullListTab2(allIndexRows);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  全量清單
+// ══════════════════════════════════════════════
+function toggleFullList() {
+  fullListExpanded = !fullListExpanded;
+  var panel = document.getElementById("fullListPanel");
+  var btn   = document.getElementById("expandBtn");
+  if (fullListExpanded) {
+    panel.classList.add("show");
+    btn.style.display = "none";
+    renderFullListTab1(allIndexRows);
+    renderFullListTab2(allIndexRows);
+    renderFullListTab3();
+  } else {
+    panel.classList.remove("show");
+    btn.style.display = "block";
+  }
+}
+
+function switchFullListTab(tabId) {
+  activeFullListTab = tabId;
+  ["tab1", "tab2", "tab3"].forEach(function(id) {
+    document.getElementById("stab-" + id).classList.toggle("active", id === tabId);
+    document.getElementById(id + "-content").classList.toggle("active", id === tabId);
+  });
+}
+
+function getDuplicateRows(rows) {
+  var nodeCount = _countNodes(rows);
+  var dupNodes  = Object.keys(nodeCount).filter(function(n) { return nodeCount[n] > 1; });
+  return rows.filter(function(r) { return dupNodes.indexOf(r.node) !== -1; });
+}
+
+function _countNodes(rows) {
+  var nc = {};
+  rows.forEach(function(r) { nc[r.node] = (nc[r.node] || 0) + 1; });
+  return nc;
+}
+
+function _countDupNodes(rows) {
+  var nc   = _countNodes(rows);
+  var dups = {};
+  Object.keys(nc).forEach(function(n) { if (nc[n] > 1) dups[n] = nc[n]; });
+  return dups;
+}
+
+function renderFullListTab1(rows) {
+  var nodeCount = _countNodes(rows);
+
+  if (!rows.length) {
+    document.getElementById("tab1-content").innerHTML = '<div class="tab-empty">尚無索引資料。</div>';
+    return;
+  }
+
+  // 依日期分組
+  var groups    = {};
+  var dateOrder = [];
+  rows.forEach(function(r) {
+    if (!groups[r.date]) { groups[r.date] = []; dateOrder.push(r.date); }
+    groups[r.date].push(r);
+  });
+  dateOrder = dateOrder.filter(function(d, i) { return dateOrder.indexOf(d) === i; });
+
+  var html = "";
+  dateOrder.forEach(function(date) {
+    html += '<div class="date-header">' + escHtml(date) + '</div>';
+    groups[date].forEach(function(r) {
+      var isDup     = nodeCount[r.node] > 1;
+      var dupBadge  = isDup ? '<span class="dup-badge">重複</span>' : "";
+      var actions   = "";
+      if (isDup) {
+        actions += '<button class="btn-sm warn-btn" onclick="doRemoveEntry(\'' +
+          escAttr(r.node) + '\',\'' + escAttr(r.date) + '\',this)">清除列</button>';
+      }
+      actions += '<button class="btn-sm danger" onclick="doDeleteNode(\'' +
+        escAttr(r.node) + '\',this)">刪除</button>';
+
+      html += '<div class="full-card">' +
+        '<div class="full-card-main">' +
+          '<div class="full-card-node">' + escHtml(r.node) + dupBadge + '</div>' +
+          '<div>' + renderKwPills(r.keywords || "") + '</div>' +
+        '</div>' +
+        '<div class="full-card-actions">' + actions + '</div>' +
+        '</div>';
+    });
+  });
+
+  html += '<div class="hint-text" style="margin-top:14px">「清除列」僅移除索引紀錄<br>「刪除」永久刪除 Drive 檔案 + 所有索引行</div>';
+  document.getElementById("tab1-content").innerHTML = html;
+}
+
+function renderFullListTab2(rows) {
+  var dupRows = getDuplicateRows(rows);
+
+  if (!dupRows.length) {
+    document.getElementById("tab2-content").innerHTML = '<div class="tab-empty">沒有重複的索引紀錄 ✓</div>';
+    return;
+  }
+
+  // 依節點名分組
+  var nodeGroups = {};
+  var nodeOrder  = [];
+  dupRows.forEach(function(r) {
+    if (!nodeGroups[r.node]) { nodeGroups[r.node] = []; nodeOrder.push(r.node); }
+    nodeGroups[r.node].push(r);
+  });
+  nodeOrder = nodeOrder.filter(function(n, i) { return nodeOrder.indexOf(n) === i; });
+
+  var html = '<div class="warn-banner">⚠ ' + nodeOrder.length +
+    ' 個節點有重複索引（共 ' + dupRows.length + ' 筆），請確認後清除多餘項目。</div>';
+
+  nodeOrder.forEach(function(node) {
+    html += '<div class="dup-group-hdr">' + escHtml(node) + '</div>';
+    nodeGroups[node].forEach(function(r) {
+      html += '<div class="full-card">' +
+        '<div class="full-card-main">' +
+          '<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">' + escHtml(r.date) + '</div>' +
+          '<div>' + renderKwPills(r.keywords || "") + '</div>' +
+        '</div>' +
+        '<div class="full-card-actions">' +
+          '<button class="btn-sm warn-btn" onclick="doRemoveEntry(\'' +
+            escAttr(r.node) + '\',\'' + escAttr(r.date) + '\',this)">清除列</button>' +
+        '</div>' +
+        '</div>';
+    });
+  });
+
+  html += '<div class="hint-text" style="margin-top:14px">「清除列」只移除該筆索引紀錄<br>Drive 上的檔案不受影響</div>';
+  document.getElementById("tab2-content").innerHTML = html;
+}
+
+function renderFullListTab3() {
+  document.getElementById("tab3-content").innerHTML =
+    '<div class="pending-ph">' +
+      '<div style="font-size:28px;margin-bottom:8px;opacity:0.35">&#128279;</div>' +
+      '<div class="pending-ph-title">Pending Link 掃描紀錄</div>' +
+      '<div class="pending-ph-desc">' +
+        '由 Cowork 排程掃描本地 vault<br>' +
+        '自動解析可連結的 pending 引用<br><br>' +
+        '尚未取得掃描紀錄' +
+      '</div>' +
+    '</div>';
+}
+
+// ══════════════════════════════════════════════
+//  全量清單操作
+// ══════════════════════════════════════════════
+function _refreshFullListBadges() {
+  document.getElementById("badge-tab1").textContent = allIndexRows.length;
+  document.getElementById("dashCount").textContent  = "共 " + allIndexRows.length + " 筆";
+  var dupNodes = _countDupNodes(allIndexRows);
+  document.getElementById("badge-tab2").textContent = Object.keys(dupNodes).length || "0";
+  var expBtn = document.getElementById("expandBtn");
+  if (expBtn.style.display !== "none") {
+    expBtn.textContent = "展開全部（" + allIndexRows.length + " 筆）";
+  }
+}
+
+function doRemoveEntry(node, date, btn) {
+  if (!confirm("清除「" + node + "」的這筆索引紀錄？\nDrive 上的節點檔案不會被刪除。")) return;
+  btn.disabled    = true;
+  btn.textContent = "…";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res.ok) {
+        btn.disabled    = false;
+        btn.textContent = "清除列";
+        alert("清除失敗：" + res.message);
+        return;
+      }
+      var found = false;
+      allIndexRows = allIndexRows.filter(function(r) {
+        if (!found && r.node === node && r.date === date) { found = true; return false; }
+        return true;
+      });
+      renderFullListTab1(allIndexRows);
+      renderFullListTab2(allIndexRows);
+      _refreshFullListBadges();
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled    = false;
+      btn.textContent = "清除列";
+      alert("通訊錯誤：" + err.message);
+    })
+    .removeIndexEntry(node, date);
+}
+
+function doDeleteNode(node, btn) {
+  if (!confirm("確定要刪除節點「" + node + "」？\n此操作將同時從 Drive 刪除檔案並移除所有索引紀錄。")) return;
+  if (!confirm("再次確認：「" + node + "」將永久刪除，無法復原。\n繼續？")) return;
+  btn.disabled    = true;
+  btn.textContent = "…";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res.ok) {
+        btn.disabled    = false;
+        btn.textContent = "刪除";
+        alert("刪除失敗：" + res.message);
+        return;
+      }
+      allIndexRows = allIndexRows.filter(function(r) { return r.node !== node; });
+      renderFullListTab1(allIndexRows);
+      renderFullListTab2(allIndexRows);
+      _refreshFullListBadges();
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled    = false;
+      btn.textContent = "刪除";
+      alert("通訊錯誤：" + err.message);
+    })
+    .deleteNode(node + ".md");
+}
+
+// ══════════════════════════════════════════════
+//  Frontmatter 解析（🔵 保留）
+// ══════════════════════════════════════════════
+function parseFrontmatterData(text) {
+  var result = { keywords: null, seeAlso: "" };
+  var match  = text.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return result;
+  var fm = match[1];
+  result.keywords = extractYamlList(fm, "keywords");
+  result.seeAlso  = extractYamlList(fm, "see_also") || "";
+  return result;
+}
+
+function extractYamlList(fm, key) {
+  var lineMatch = fm.match(new RegExp(key + ':\\s*(.+)'));
+  if (lineMatch) {
+    var val = lineMatch[1].trim();
+    if (val === '[]') return "";
+    var wikiLinks = val.match(/\[\[([^\]]+)\]\]/g);
+    if (wikiLinks) {
+      return wikiLinks.map(function(w) { return w.slice(2, -2); }).join(", ");
+    }
+    var plainMatch = val.match(/^\[([^\]]*)\]$/);
+    if (plainMatch) {
+      return plainMatch[1].split(",").map(function(s) { return s.trim(); }).filter(Boolean).join(", ");
+    }
+  }
+  var m2 = fm.match(new RegExp(key + ':\\s*\\n((?:\\s*-\\s*.+\\n?)+)'));
+  if (m2) return (m2[1].match(/- (.+)/g) || []).map(function(l) { return l.replace(/^-\s*/, "").trim(); }).join(", ");
+  return null;
+}
+
+// ══════════════════════════════════════════════
+//  工具（🔵 保留）
+// ══════════════════════════════════════════════
+function renderKwPills(kwStr) {
+  if (!kwStr) return "";
+  return kwStr.split(",").map(function(k) {
+    k = k.trim();
+    return k ? '<span class="kw-pill">' + escHtml(k) + '</span>' : "";
+  }).join("");
+}
+
+function formatToday() {
+  var d = new Date();
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escAttr(s) {
+  return String(s)
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// ══════════════════════════════════════════════
+//  初始化
+// ══════════════════════════════════════════════
+(function() {
+  var defaultPage = window.innerWidth <= 520 ? "dashboard" : "upload";
+  showPage(defaultPage);
+})();
+</script>
+</body>
+</html>
